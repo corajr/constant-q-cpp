@@ -62,6 +62,34 @@ CQSpectrogram::getRemainingOutput()
     return postProcess(m_cq.getRemainingOutput(), true);
 }
 
+#ifdef RAINBOWGRAM
+double CQSpectrogram::demodulate(double phase, int i, int j, int height) {
+    double f = getBinFrequency(j);
+    double t = (i * getColumnHop()) / getSampleRate();
+    double phaseExp = fmod(2 * M_PI * f * t, 2 * M_PI) - M_PI;
+    return phase - phaseExp;
+}
+
+double CQSpectrogram::rainbowPhase(const ComplexBlock &cq, int i, int j) {
+    int width = cq.size();
+    int height = cq[i].size();
+
+    // really, should be:
+    // `np.diff(np.unwrap(np.angle(phase)-phase_exp, axis=1), axis=1, prepend=0)
+
+    const Complex a = cq[i][j];
+    const Complex b = i > 0 ? cq[i-1][j] : std::complex<double>();
+    double aPhase = demodulate(arg(a), i, j, height);
+    double bPhase = i > 0 ? demodulate(arg(b), i - 1, j, height) : 0.0;
+    double dPhase = aPhase - bPhase;
+    if (dPhase > M_PI) {
+        dPhase = dPhase - M_PI;
+    }
+
+    return dPhase * pow(abs(a), 2.0);
+}
+#endif
+
 CQSpectrogram::RealBlock
 CQSpectrogram::postProcess(const ComplexBlock &cq, bool insist)
 {
@@ -81,7 +109,11 @@ CQSpectrogram::postProcess(const ComplexBlock &cq, bool insist)
                 cerr << "WARNING: NaN in imag at (" << i << "," << j << ")" << endl;
             }
 #endif
+#ifdef RAINBOWGRAM
+            col[j] = rainbowPhase(cq, i, j);
+#else
             col[j] = abs(cq[i][j]);
+#endif
         }
         spec.push_back(col);
     }
@@ -265,5 +297,3 @@ CQSpectrogram::linearInterpolated(const RealBlock &g, int x0, int x1)
     return out;
 }
 
-
-	

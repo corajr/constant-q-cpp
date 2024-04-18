@@ -112,6 +112,10 @@ private:
     Interpolation m_interpolation;
 
     RealBlock m_buffer;
+#ifdef RAINBOWGRAM
+    double demodulate(double phase, int i, int j, int height);
+    double rainbowPhase(const ComplexBlock &, int i, int j);
+#endif
     RealBlock postProcess(const ComplexBlock &, bool insist);
     RealBlock fetchHold(bool insist);
     RealBlock fetchLinear(bool insist);
